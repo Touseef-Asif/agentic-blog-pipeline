@@ -1,4 +1,4 @@
-# 🤖 Blog Pipeline
+# Blog Pipeline
 
 > A **production-ready agentic blog-writing pipeline** powered by [LangGraph](https://github.com/langchain-ai/langgraph), [Groq](https://groq.com/), and [Firecrawl](https://www.firecrawl.dev/).
 
@@ -6,23 +6,23 @@ Automatically discovers trending topics from RSS feeds, researches them using we
 
 ---
 
-## ✨ Features
+## Features
 
 | Feature | Details |
 |---------|---------|
-| 📰 **RSS Ingestion** | Concurrent multi-feed parsing with deduplication |
-| 🔍 **Trend Detection** | LLM-powered topic identification with relevance scoring |
-| 🔬 **Deep Research** | Multi-query Firecrawl search + scrape with de-dup |
-| ✍️ **AI Writing** | Groq (Llama 3.3 70B) generates 1500–2500 word posts |
-| 🔄 **Quality Loop** | Critic evaluates 5 dimensions; writer revises until score ≥ 85 |
-| 💾 **PostgreSQL** | Full run history with metrics, drafts, and scores |
-| 🖥️ **Rich CLI** | Typer + Rich with progress bars, tables, and panels |
-| 📄 **Export** | Markdown and HTML export of published posts |
-| 🔁 **Checkpointing** | LangGraph PostgreSQL checkpointer (MemorySaver fallback) |
+| **RSS Ingestion** | Concurrent multi-feed parsing with deduplication |
+| **Trend Detection** | LLM-powered topic identification with relevance scoring |
+| **Deep Research** | Multi-query Firecrawl search + scrape with de-dup |
+| **AI Writing** | Groq (Llama 3.3 70B) generates 1500–2500 word posts |
+| **Quality Loop** | Critic evaluates 5 dimensions; writer revises until score ≥ 85 |
+| **PostgreSQL** | Full run history with metrics, drafts, and scores |
+| **Rich CLI** | Typer + Rich with progress bars, tables, and panels |
+| **Export** | Markdown and HTML export of published posts |
+| **Checkpointing** | LangGraph PostgreSQL checkpointer (MemorySaver fallback) |
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 RSS Feeds
@@ -62,7 +62,7 @@ RSS Feeds
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Prerequisites
 
@@ -122,7 +122,7 @@ python scripts/cli.py
 
 ---
 
-## ⚙️ Environment Variables
+## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -137,7 +137,7 @@ python scripts/cli.py
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 blog-pipeline/
@@ -170,7 +170,7 @@ blog-pipeline/
 
 ---
 
-## 🧪 Development
+## Development
 
 ```bash
 # Run tests
@@ -193,7 +193,7 @@ make clean
 
 ---
 
-## 📊 Quality Loop
+## Quality Loop
 
 The critic-writer loop works as follows:
 
@@ -203,11 +203,11 @@ def should_rewrite(state: BlogState) -> str:
     attempts = state.get("attempts", 0)
 
     if score >= PASS_SCORE:
-        return "save_blog"    # ✅ ACCEPT
+        return "save_blog"    # ACCEPT
     elif attempts >= MAX_ATTEMPTS:
-        return "save_blog"    # ⏹ ACCEPT_BEST (best effort)
+        return "save_blog"    # ACCEPT_BEST (best effort)
     else:
-        return "write_blog"   # 🔄 CONTINUE (revise)
+        return "write_blog"   # CONTINUE (revise)
 ```
 
 The critic evaluates 5 dimensions:
@@ -219,7 +219,7 @@ The critic evaluates 5 dimensions:
 
 ---
 
-## 🐳 Docker
+## Docker
 
 ```bash
 # Start services
@@ -237,6 +237,6 @@ docker-compose down -v
 
 ---
 
-## 📝 License
+## License
 
 MIT © Blog Pipeline Team
