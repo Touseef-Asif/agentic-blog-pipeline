@@ -49,7 +49,7 @@ def _get_llm() -> ChatGroq:
 
 
 def fetch_rss(state: BlogState) -> dict:
-    """Node 1: Fetch articles from OpenAI and Dawn RSS feeds."""
+    """Node 1: Fetch articles from WSJ Tech and Dawn RSS feeds."""
     logger.info("=== NODE: fetch_rss ===")
     articles = rss.fetch_articles()
     return {"articles": articles}

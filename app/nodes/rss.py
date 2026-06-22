@@ -2,7 +2,7 @@
 rss.py — Fetch latest articles from RSS feeds.
 
 Two hard-coded feeds:
-  1. OpenAI News  — https://openai.com/news/rss.xml
+  1. WSJ Tech     — https://feeds.a.dj.com/rss/RSSWSJD.xml
   2. Dawn News    — https://www.dawn.com/feeds/home
 
 Returns a list of Article dicts (5 articles per feed = up to 10 total).
@@ -17,7 +17,7 @@ from app.models.schemas import Article
 
 # The two RSS feeds — change URLs here if they ever move
 RSS_FEEDS = {
-    "openai": "https://openai.com/news/rss.xml",
+    "wsj_tech": "https://feeds.a.dj.com/rss/RSSWSJD.xml",
     "dawn": "https://www.dawn.com/feeds/home",
 }
 

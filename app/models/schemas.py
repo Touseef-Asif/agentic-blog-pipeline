@@ -16,7 +16,7 @@ class Article(BaseModel):
     title: str
     link: str
     summary: str
-    source: str  # e.g. "openai" or "dawn"
+    source: str  # e.g. "wsj_tech" or "dawn"
 
 
 class TopicSelection(BaseModel):
