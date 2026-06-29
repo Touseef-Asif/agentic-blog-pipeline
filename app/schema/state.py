@@ -1,3 +1,6 @@
+# NEW
+# Reason: Moved from app/core/state.py as part of project restructuring.
+# ------------------------
 """
 state.py — LangGraph shared state definition.
 

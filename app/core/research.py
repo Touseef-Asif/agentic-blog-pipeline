@@ -1,3 +1,6 @@
+# NEW
+# Reason: Moved from app/nodes/research.py and refactored to be asynchronous (scraping pages in parallel, async LLM summary).
+# ------------------------
 """
 research.py — Firecrawl search + scrape + LLM summarisation.
 
@@ -10,7 +13,7 @@ Tenacity retries wrap all Firecrawl API calls.
 """
 
 import os
-
+import asyncio
 from firecrawl import FirecrawlApp
 from langchain_groq import ChatGroq
 from tenacity import retry, stop_after_attempt, wait_fixed
@@ -29,10 +32,14 @@ def _get_firecrawl() -> FirecrawlApp:
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(3))
-def _search(app: FirecrawlApp, query: str) -> list[str]:
+async def _search(app: FirecrawlApp, query: str) -> list[str]:
     """Search Firecrawl and return a list of URLs."""
     logger.info(f"Firecrawl search: '{query}'")
-    results = app.search(query, limit=MAX_RESULTS)
+    # CHANGED
+    # Reason: Run blocking firecrawl search in a thread pool.
+    results = await asyncio.to_thread(app.search, query, limit=MAX_RESULTS)
+    # ------------------------
+    
     # results is a SearchData object with a 'web' list
     if hasattr(results, "web") and results.web:
         urls = [r.url for r in results.web if hasattr(r, "url")]
@@ -47,15 +54,18 @@ def _search(app: FirecrawlApp, query: str) -> list[str]:
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(3))
-def _scrape(app: FirecrawlApp, url: str) -> str:
+async def _scrape(app: FirecrawlApp, url: str) -> str:
     """Scrape a single URL and return its markdown content."""
     logger.info(f"Scraping: {url}")
-    result = app.scrape_url(url, formats=["markdown"])
+    # CHANGED
+    # Reason: Run blocking firecrawl scrape in a thread pool.
+    result = await asyncio.to_thread(app.scrape_url, url, formats=["markdown"])
+    # ------------------------
     # result is a ScrapeResponse object; access markdown attribute
     return getattr(result, "markdown", "") or ""
 
 
-def summarize_research(topic: str, raw_content: str, llm: ChatGroq) -> str:
+async def summarize_research(topic: str, raw_content: str, llm: ChatGroq) -> str:
     """Use Groq LLM to summarise scraped content into research notes."""
     prompt = (
         f"You are a research assistant. Summarise the following web content "
@@ -64,11 +74,14 @@ def summarize_research(topic: str, raw_content: str, llm: ChatGroq) -> str:
         f"CONTENT:\n{raw_content[:MAX_CONTENT_CHARS]}"
     )
     logger.info("Summarising research with LLM...")
-    response = llm.invoke(prompt)
+    # CHANGED
+    # Reason: Use async ainvoke instead of invoke.
+    response = await llm.ainvoke(prompt)
+    # ------------------------
     return str(response.content)
 
 
-def search_and_summarize(topic: str, llm: ChatGroq) -> str:
+async def search_and_summarize(topic: str, llm: ChatGroq) -> str:
     """
     Main entry point: search topic, scrape pages, summarize.
 
@@ -83,20 +96,27 @@ def search_and_summarize(topic: str, llm: ChatGroq) -> str:
 
     # 1. Search for URLs
     try:
-        urls = _search(app, topic)
+        urls = await _search(app, topic)
     except Exception as e:
         logger.error(f"Firecrawl search failed: {e}")
         return f"Research unavailable: {e}"
 
     # 2. Scrape each URL and concatenate content
-    all_content = []
-    for url in urls:
+    # CHANGED
+    # Reason: Scrape URLs concurrently using asyncio.gather.
+    async def scrape_task(url: str) -> str:
         try:
-            content = _scrape(app, url)
+            content = await _scrape(app, url)
             if content:
-                all_content.append(f"--- Source: {url} ---\n{content}")
+                return f"--- Source: {url} ---\n{content}"
         except Exception as e:
             logger.warning(f"Failed to scrape {url}: {e}")
+        return ""
+
+    tasks = [scrape_task(url) for url in urls]
+    results = await asyncio.gather(*tasks)
+    all_content = [res for res in results if res]
+    # ------------------------
 
     if not all_content:
         return "No research content could be retrieved."
@@ -104,4 +124,5 @@ def search_and_summarize(topic: str, llm: ChatGroq) -> str:
     raw = "\n\n".join(all_content)
 
     # 3. Summarize with LLM
-    return summarize_research(topic, raw, llm)
+    return await summarize_research(topic, raw, llm)
+# ------------------------

@@ -6,11 +6,11 @@ Defines 6 nodes and connects them with normal + conditional edges.
 Node execution order:
   fetch_rss → pick_topic → do_research → write_blog → critique_blog
                                                             ↓
-                                              [conditional_edge]
-                                            /                    \\
-                               pass (score≥85 or max attempts)   fail (retry)
-                                            ↓                    ↓
-                                        save_blog           write_blog (loop)
+                                               [conditional_edge]
+                                             /                    \
+                                pass (score≥85 or max attempts)   fail (retry)
+                                             ↓                    ↓
+                                         save_blog           write_blog (loop)
 
 LangGraph checkpointing uses in-memory MemorySaver (simple, no disk needed).
 """
@@ -21,13 +21,17 @@ from langchain_groq import ChatGroq
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 
+# CHANGED
+# Reason: Updated imports to reflect new directory structure (core/ and schema/).
+# ------------------------
 import app.db.database as database
-import app.nodes.critic as critic_module
-import app.nodes.research as research_module
-import app.nodes.rss as rss
-import app.nodes.writer as writer_module
+import app.core.critic as critic_module
+import app.core.research as research_module
+import app.core.rss as rss
+import app.core.writer as writer_module
 from app.core.logger import logger
-from app.core.state import BlogState
+from app.schema.state import BlogState
+# ------------------------
 
 # --- Thresholds (read from env, with sane defaults) ---
 PASS_SCORE = int(os.getenv("PASS_SCORE_THRESHOLD", "85"))
@@ -47,31 +51,33 @@ def _get_llm() -> ChatGroq:
 # Node functions — each takes BlogState, returns partial state update
 # ─────────────────────────────────────────────
 
-
-def fetch_rss(state: BlogState) -> dict:
+# CHANGED
+# Reason: Converted all node functions to async def to support asynchronous execution.
+# ------------------------
+async def fetch_rss(state: BlogState) -> dict:
     """Node 1: Fetch articles from WSJ Tech and Dawn RSS feeds."""
     logger.info("=== NODE: fetch_rss ===")
-    articles = rss.fetch_articles()
+    articles = await rss.fetch_articles()
     return {"articles": articles}
 
 
-def pick_topic(state: BlogState) -> dict:
+async def pick_topic(state: BlogState) -> dict:
     """Node 2: Use LLM to select the single best topic from articles."""
     logger.info("=== NODE: pick_topic ===")
     llm = _get_llm()
-    selection = writer_module.select_topic(state["articles"], llm)
+    selection = await writer_module.select_topic(state["articles"], llm)
     return {"selected_topic": selection.topic}
 
 
-def do_research(state: BlogState) -> dict:
+async def do_research(state: BlogState) -> dict:
     """Node 3: Firecrawl search + scrape + LLM summary."""
     logger.info("=== NODE: do_research ===")
     llm = _get_llm()
-    summary = research_module.search_and_summarize(state["selected_topic"], llm)
+    summary = await research_module.search_and_summarize(state["selected_topic"], llm)
     return {"research_summary": summary}
 
 
-def write_blog(state: BlogState) -> dict:
+async def write_blog(state: BlogState) -> dict:
     """Node 4: Generate outline then full blog draft (uses critic feedback if retrying)."""
     logger.info("=== NODE: write_blog ===")
     llm = _get_llm()
@@ -81,11 +87,11 @@ def write_blog(state: BlogState) -> dict:
 
     # On the first pass, generate the outline; on retries, reuse it
     if not state.get("outline"):
-        outline = writer_module.generate_outline(topic, research, llm)
+        outline = await writer_module.generate_outline(topic, research, llm)
     else:
         outline = state["outline"]
 
-    draft = writer_module.generate_blog(topic, outline, research, feedback, llm)
+    draft = await writer_module.generate_blog(topic, outline, research, feedback, llm)
     return {
         "outline": outline,
         "draft": draft,
@@ -93,11 +99,11 @@ def write_blog(state: BlogState) -> dict:
     }
 
 
-def critique_blog(state: BlogState) -> dict:
+async def critique_blog(state: BlogState) -> dict:
     """Node 5: Score the draft and track the best version seen so far."""
     logger.info("=== NODE: critique_blog ===")
     llm = _get_llm()
-    result = critic_module.review_blog(state["draft"], llm)
+    result = await critic_module.review_blog(state["draft"], llm)
 
     # Track the best draft across all attempts
     current_best_score = state.get("best_score", 0)
@@ -117,16 +123,17 @@ def critique_blog(state: BlogState) -> dict:
     }
 
 
-def save_blog(state: BlogState) -> dict:
+async def save_blog(state: BlogState) -> dict:
     """Node 6: Persist the best draft to PostgreSQL."""
     logger.info("=== NODE: save_blog ===")
-    database.save_blog(
+    await database.save_blog(
         topic=state["selected_topic"],
         draft=state["best_draft"],
         score=state["best_score"],
     )
     logger.info(f"Pipeline complete. Best score: {state['best_score']}/100")
     return {}  # No state changes needed after saving
+# ------------------------
 
 
 # ─────────────────────────────────────────────

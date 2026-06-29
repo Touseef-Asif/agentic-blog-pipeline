@@ -1,3 +1,6 @@
+# NEW
+# Reason: Moved from app/nodes/writer.py and refactored to be asynchronous.
+# ------------------------
 """
 writer.py — Topic selection, outline generation, and blog writing via Groq.
 
@@ -17,7 +20,7 @@ from app.models.schemas import TopicSelection
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
-def select_topic(articles: list[dict], llm: ChatGroq) -> TopicSelection:
+async def select_topic(articles: list[dict], llm: ChatGroq) -> TopicSelection:
     """
     Analyse RSS articles and pick the single best topic to write about.
 
@@ -42,13 +45,16 @@ def select_topic(articles: list[dict], llm: ChatGroq) -> TopicSelection:
 
     # Use structured output — returns a TopicSelection instance directly
     structured_llm = llm.with_structured_output(TopicSelection)
-    result: TopicSelection = structured_llm.invoke(prompt)
+    # CHANGED
+    # Reason: Use async ainvoke instead of invoke.
+    result: TopicSelection = await structured_llm.ainvoke(prompt)
+    # ------------------------
     logger.info(f"Selected topic: '{result.topic}' — {result.reasoning}")
     return result
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
-def generate_outline(topic: str, research_summary: str, llm: ChatGroq) -> str:
+async def generate_outline(topic: str, research_summary: str, llm: ChatGroq) -> str:
     """Generate a structured blog outline for the given topic."""
     logger.info(f"Generating outline for: '{topic}'")
     prompt = (
@@ -57,12 +63,15 @@ def generate_outline(topic: str, research_summary: str, llm: ChatGroq) -> str:
         "Return a markdown outline with an introduction, 3-4 main sections "
         "(each with 2-3 bullet sub-points), and a conclusion."
     )
-    response = llm.invoke(prompt)
+    # CHANGED
+    # Reason: Use async ainvoke instead of invoke.
+    response = await llm.ainvoke(prompt)
+    # ------------------------
     return str(response.content)
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
-def generate_blog(
+async def generate_blog(
     topic: str,
     outline: str,
     research_summary: str,
@@ -92,5 +101,9 @@ def generate_blog(
         "- Use facts from the research\n"
         "- Professional but accessible tone"
     )
-    response = llm.invoke(prompt)
+    # CHANGED
+    # Reason: Use async ainvoke instead of invoke.
+    response = await llm.ainvoke(prompt)
+    # ------------------------
     return str(response.content)
+# ------------------------

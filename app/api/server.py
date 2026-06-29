@@ -12,7 +12,10 @@ from app.graph import build_graph
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Ensure the database is initialized before serving requests."""
-    init_db()
+    # CHANGED
+    # Reason: Await the async init_db() database initialization.
+    await init_db()
+    # ------------------------
     yield
 
 

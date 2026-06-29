@@ -1,3 +1,6 @@
+# NEW
+# Reason: Moved from app/nodes/critic.py and refactored to be asynchronous.
+# ------------------------
 """
 critic.py — Blog quality review via Groq structured output.
 
@@ -19,7 +22,7 @@ from app.models.schemas import CriticOutput
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
-def review_blog(draft: str, llm: ChatGroq) -> CriticOutput:
+async def review_blog(draft: str, llm: ChatGroq) -> CriticOutput:
     """
     Score the blog draft and provide improvement feedback.
 
@@ -48,6 +51,10 @@ def review_blog(draft: str, llm: ChatGroq) -> CriticOutput:
     )
 
     structured_llm = llm.with_structured_output(CriticOutput)
-    result: CriticOutput = structured_llm.invoke(prompt)
+    # CHANGED
+    # Reason: Use async ainvoke instead of invoke.
+    result: CriticOutput = await structured_llm.ainvoke(prompt)
+    # ------------------------
     logger.info(f"Critic score: {result.score}/100")
     return result
+# ------------------------
